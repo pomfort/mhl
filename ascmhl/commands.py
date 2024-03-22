@@ -378,6 +378,10 @@ def create_for_folder_subcommand(
                         new_path_media_hash.previous_path = relative_not_found_path
                         found_file_paths.add(not_found_path)
         not_found_paths = not_found_paths - found_file_paths
+
+    if len(missing_asc_mhl_folder) > 0:
+        raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
+
     commit_session(session, author_name, author_email, author_phone, author_role, location, comment)
 
     exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
@@ -386,9 +390,6 @@ def create_for_folder_subcommand(
 
     if exception:
         raise exception
-
-    if len(missing_asc_mhl_folder) > 0:
-        raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
 
 
 def create_for_single_files_subcommand(

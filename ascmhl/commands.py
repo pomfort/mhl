@@ -1064,6 +1064,18 @@ def diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignor
                 num_new_files += 1
                 continue
 
+    missing_asc_mhl_folder = set()
+    if len(existing_history.hash_lists) > 0:
+        for ref in existing_history.hash_lists[-1].hash_list_references:
+            referenced_asc_folder = os.path.join(
+                os.path.dirname(existing_history.asc_mhl_path), os.path.dirname(ref.path)
+            )
+            if not os.path.exists(referenced_asc_folder):
+                missing_asc_mhl_folder.add(os.path.dirname(referenced_asc_folder))
+
+    if len(missing_asc_mhl_folder) > 0:
+        raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
+
     exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
     if num_failed_verifications > 0:
         exception = errors.VerificationFailedException()

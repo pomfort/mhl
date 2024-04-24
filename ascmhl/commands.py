@@ -1086,15 +1086,14 @@ def diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignor
     if len(missing_asc_mhl_folder) > 0:
         raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
 
-    if not only_info:
-        exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
-        if num_failed_verifications > 0:
-            exception = errors.VerificationFailedException()
-        if not exception and num_new_files > 0:
-            exception = errors.NewFilesFoundException()
+    exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
+    if num_failed_verifications > 0:
+        exception = errors.VerificationFailedException()
+    if not exception and num_new_files > 0:
+        exception = errors.NewFilesFoundException()
 
-        if exception:
-            raise exception
+    if exception:
+        raise exception
 
 
 @click.command()

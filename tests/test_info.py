@@ -157,5 +157,8 @@ def test_info_renamed_file(fs):
 /root/B | 2 | Available | Not Renamed | 0.00 B
 /root/Stuff.txt | 1 | Available | Not Renamed | 6.00 B
 /root/_B | None | New | Not Renamed | 0.00 B
-/root/A/AA/AA1.txt | 1 | Missing | Not Renamed | None\n"""
-    assert result.exit_code == 0
+/root/A/AA/AA1.txt | 1 | Missing | Not Renamed | None
+ERROR: 1 missing file(s):
+  A/AA/AA1.txt
+Error: Files referenced in the ASC MHL history are missing\n"""
+    assert result.exit_code == 10

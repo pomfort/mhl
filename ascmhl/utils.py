@@ -48,3 +48,14 @@ def datetime_now_filename_string():
 
 def datetime_now_isostring_with_microseconds():
     return datetime_isostring(datetime.datetime.now(), keep_microseconds=True)
+
+
+def format_bytes(size):
+    # 2**10 = 1024
+    power = 2**10
+    n = 0
+    power_labels = {0 : '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'}
+    while size > power:
+        size /= power
+        n += 1
+    return size, power_labels[n]+'B'

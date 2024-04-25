@@ -144,18 +144,19 @@ def test_info_renamed_file(fs):
     result = runner.invoke(ascmhl.commands.create, ["/root/", "-h", "xxh64", "-i", "ignore.txt"])
     os.rename("/root/A/A1.txt", "/root/A/_A1.txt")
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
+    result = runner.invoke(ascmhl.commands.create, ["/root/", "-h", "xxh64"])
 
     os.remove("/root/A/AA/AA1.txt")
     fs.create_file("/root/_B/B3.txt", contents="B2\n")
     result = runner.invoke(ascmhl.commands.info, ["/root/", "-l"])
     assert result.output == """/root/A/AA/ignore.txt | None | Ignored | Not Renamed | 4.00 B
-/root/A/AA | 3 | Available | Not Renamed | 0.00 B
-/root/A/_A1.txt | 3 | Renamed | A1.txt | 3.00 B
-/root/B/B1.txt | 2 | Available | Not Renamed | 3.00 B
+/root/A/AA | 4 | Available | Not Renamed | 0.00 B
+/root/A/_A1.txt | 4 | Renamed | A1.txt | 3.00 B
+/root/B/B1.txt | 3 | Available | Not Renamed | 3.00 B
 /root/_B/B3.txt | None | New | Not Renamed | 3.00 B
-/root/A | 3 | Available | Not Renamed | 0.00 B
-/root/B | 2 | Available | Not Renamed | 0.00 B
-/root/Stuff.txt | 1 | Available | Not Renamed | 6.00 B
+/root/A | 4 | Available | Not Renamed | 0.00 B
+/root/B | 3 | Available | Not Renamed | 0.00 B
+/root/Stuff.txt | 2 | Available | Not Renamed | 6.00 B
 /root/_B | None | New | Not Renamed | 0.00 B
-/root/A/AA/AA1.txt | 1 | Missing | Not Renamed | None\n"""
+/root/A/AA/AA1.txt | 2 | Missing | Not Renamed | None\n"""
     assert result.exit_code == 0

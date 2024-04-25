@@ -1447,20 +1447,25 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         raise errors.NoMHLHistoryException(root_path)
 
     relative_path = existing_history.get_relative_file_path(os.path.abspath(path))
-
-
-    hash_list = existing_history.hash_lists[-1]
-    media_hash = hash_list.find_media_hash_for_path(relative_path)
-
+    latest_hash_list = existing_history.hash_lists[-1]
+    latest_media_hash = latest_hash_list.find_media_hash_for_path(relative_path)
     if not os.path.exists(path):
-        logger.info(f"{path} | {hash_list.generation_number} | Missing | Not Renamed | None")
+        logger.info(f"{path} | {latest_hash_list.generation_number} | Missing | Not Renamed | None")
         return
 
-    file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
-    compact_info = f"{path} | {hash_list.generation_number} | Available | Not Renamed | {file_size:.2f} {bytes_string}"
-    if media_hash is not None:
+    previous_path = None
+    for hash_list in existing_history.hash_lists:
+        media_hash = hash_list.find_media_hash_for_path(relative_path)
+        if media_hash is None:
+            continue
         if media_hash.previous_path and relative_path == media_hash.path:
-            compact_info = f"{path} | {hash_list.generation_number} | Renamed | {media_hash.previous_path} | {file_size:.2f} {bytes_string}"
+            previous_path = media_hash.previous_path
+
+    file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
+    compact_info = f"{path} | {latest_hash_list.generation_number} | Available | Not Renamed | {file_size:.2f} {bytes_string}"
+    if latest_media_hash is not None:
+        if previous_path is not None:
+            compact_info = f"{path} | {latest_hash_list.generation_number} | Renamed | {previous_path} | {file_size:.2f} {bytes_string}"
             logger.info(compact_info)
             return
         else:

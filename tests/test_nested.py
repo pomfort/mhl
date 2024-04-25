@@ -247,3 +247,25 @@ def test_deleted_ascmhl_folder(fs):
     assert result.exception
     assert result.exit_code == 30
     assert not os.path.exists("/root/ascmhl/0003_root_2020-01-16_091500Z.mhl")
+
+@freeze_time("2020-01-16 09:15:00")
+def test_new_root_folder(fs):
+    fs.create_file("/root/A/A1.txt", contents="A1\n")
+    fs.create_file("/root/B/B1.txt", contents="B1\n")
+
+    runner = CliRunner()
+    result = runner.invoke(ascmhl.commands.create, ["/root/A/"])
+    result = runner.invoke(ascmhl.commands.create, ["/root/B/"])
+
+    result = runner.invoke(ascmhl.commands.create, ["/root/", "-cr"])
+
+    result = runner.invoke(ascmhl.commands.info, ["/root/"])
+    assert not result.exception
+    assert result.output == """Info with history at path: /root/
+  Generation 1 (2020-01-16T09:15:00+00:00)
+
+Child History at /root/A:
+  Generation 1 (2020-01-16T09:15:00+00:00)
+
+Child History at /root/B:
+  Generation 1 (2020-01-16T09:15:00+00:00)\n"""

@@ -272,7 +272,7 @@ class MHLGenerationCreationSession:
                 hash_entry.structure_hash_string = structure_hash_string
                 parent_media_hash.append_hash_entry(hash_entry)
 
-    def commit(self, creator_info: MHLCreatorInfo, process_info: MHLProcessInfo):
+    def commit(self, creator_info: MHLCreatorInfo, process_info: MHLProcessInfo, only_write_root=False):
         """
         this method needs to create the generations of the children bottom up
         # so each history can reference the children correctly and can get the actual hash of the file
@@ -300,10 +300,18 @@ class MHLGenerationCreationSession:
                 history.latest_ignore_patterns(), self.ignore_spec.get_pattern_list()
             )
 
+            do_not_write_history = only_write_root and history != self.root_history
+
+            if history.parent_history is not None:
+                if do_not_write_history:
+                    referenced_hash_lists[history.parent_history].append(history.hash_lists[-1])
+                    continue
+
+                referenced_hash_lists[history.parent_history].append(new_hash_list)
+            if do_not_write_history:
+                continue
+
             history.write_new_generation(new_hash_list)
             relative_generation_path = self.root_history.get_relative_file_path(new_hash_list.file_path)
             logger.verbose(f"Created new generation {relative_generation_path}")
-            if history.parent_history is not None:
-                referenced_hash_lists[history.parent_history].append(new_hash_list)
-
             chain_xml_parser.write_chain(history.chain, new_hash_list)

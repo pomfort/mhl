@@ -69,6 +69,13 @@ from collections import namedtuple
     is_flag=True,
     help="Detect automatically renamed files",
 )
+@click.option(
+    "--only_create_root",
+    "-cr",
+    default=False,
+    is_flag=True,
+    help="Create root history without modifying nested histories",
+)
 # creatorinfo values
 @click.option(
     "--author_name",
@@ -128,6 +135,7 @@ def create(
     hash_format,
     no_directory_hashes,
     detect_renaming,
+    only_create_root,
     single_file,
     ignore_list,
     ignore_spec_file,
@@ -168,6 +176,7 @@ def create(
         root_path,
         verbose,
         detect_renaming,
+        only_create_root,
         hash_format,
         no_directory_hashes,
         author_name,
@@ -186,6 +195,7 @@ def create_for_folder_subcommand(
     root_path,
     verbose,
     detect_renaming,
+    only_create_root,
     hash_formats,
     no_directory_hashes,
     author_name,
@@ -382,7 +392,7 @@ def create_for_folder_subcommand(
     if len(missing_asc_mhl_folder) > 0:
         raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
 
-    commit_session(session, author_name, author_email, author_phone, author_role, location, comment)
+    commit_session(session, author_name, author_email, author_phone, author_role, location, comment, only_create_root)
 
     exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
     if num_failed_verifications > 0:
@@ -1086,6 +1096,8 @@ def diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignor
     if len(missing_asc_mhl_folder) > 0:
         raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
 
+    if only_info:
+        return
     exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
     if num_failed_verifications > 0:
         exception = errors.VerificationFailedException()
@@ -1526,7 +1538,7 @@ def test_for_missing_files(not_found_paths, root_path, ignore_spec: MHLIgnoreSpe
     return errors.CompletenessCheckFailedException()
 
 
-def commit_session(session, author_name, author_email, author_phone, author_role, location, comment):
+def commit_session(session, author_name, author_email, author_phone, author_role, location, comment, only_create_root=False):
     creator_info = MHLCreatorInfo()
     creator_info.tool = MHLTool(ascmhl_tool_name, ascmhl_tool_version)
     creator_info.creation_date = utils.datetime_now_isostring()
@@ -1540,7 +1552,7 @@ def commit_session(session, author_name, author_email, author_phone, author_role
     process_info = MHLProcessInfo()
     process_info.process = MHLProcess("in-place")
 
-    session.commit(creator_info, process_info)
+    session.commit(creator_info, process_info, only_create_root)
 
 
 def commit_session_for_collection(

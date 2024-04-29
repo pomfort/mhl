@@ -198,29 +198,6 @@ def test_create_nested_mhl_chain_missing(fs):
     assert result.exit_code == 32
 
 @freeze_time("2020-01-16 09:15:00")
-def test_deleted_ascmhl_folder_diff(fs):
-    fs.create_file("/root/Stuff.txt", contents="stuff\n")
-    fs.create_file("/root/A/A1.txt", contents="A1\n")
-    fs.create_file("/root/B/B1.txt", contents="B1\n")
-
-    runner = CliRunner()
-    result = runner.invoke(ascmhl.commands.create, ["/root/A/", "-h", "xxh64", "-v"])
-    assert not result.exception
-
-    result = runner.invoke(ascmhl.commands.create, ["/root/B", "-h", "xxh64", "-v"])
-    assert not result.exception
-
-    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v"])
-    assert not result.exception
-
-    shutil.rmtree("/root/B/ascmhl")
-
-    result = runner.invoke(ascmhl.commands.diff, ["/root", "-v"])
-    assert result.exception
-    assert result.exit_code == 30
-    assert not os.path.exists("/root/ascmhl/0002_root_2020-01-16_091500Z.mhl")
-
-@freeze_time("2020-01-16 09:15:00")
 def test_deleted_ascmhl_folder(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
     fs.create_file("/root/A/A1.txt", contents="A1\n")
@@ -247,6 +224,28 @@ def test_deleted_ascmhl_folder(fs):
     assert result.exception
     assert result.exit_code == 30
     assert not os.path.exists("/root/ascmhl/0003_root_2020-01-16_091500Z.mhl")
+
+def test_deleted_ascmhl_folder_diff(fs):
+    fs.create_file("/root/Stuff.txt", contents="stuff\n")
+    fs.create_file("/root/A/A1.txt", contents="A1\n")
+    fs.create_file("/root/B/B1.txt", contents="B1\n")
+
+    runner = CliRunner()
+    result = runner.invoke(ascmhl.commands.create, ["/root/A/", "-h", "xxh64", "-v"])
+    assert not result.exception
+
+    result = runner.invoke(ascmhl.commands.create, ["/root/B", "-h", "xxh64", "-v"])
+    assert not result.exception
+
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v"])
+    assert not result.exception
+
+    shutil.rmtree("/root/B/ascmhl")
+
+    result = runner.invoke(ascmhl.commands.diff, ["/root", "-v"])
+    assert result.exception
+    assert result.exit_code == 30
+    assert not os.path.exists("/root/ascmhl/0002_root_2020-01-16_091500Z.mhl")
 
 @freeze_time("2020-01-16 09:15:00")
 def test_new_root_folder(fs):

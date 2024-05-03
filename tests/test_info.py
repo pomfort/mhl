@@ -131,7 +131,7 @@ def test_nested_info(fs, nested_mhl_histories):
     assert result.exit_code == 0
 
 @freeze_time("2020-01-16 09:15:00")
-def test_info_renamed_file(fs):
+def test_diff_info_renamed_file(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
     fs.create_file("/root/A/A1.txt", contents="A1\n")
     fs.create_file("/root/B/B1.txt", contents="B1\n")
@@ -143,20 +143,22 @@ def test_info_renamed_file(fs):
     result = runner.invoke(ascmhl.commands.create, ["/root/B", "-h", "md5", "-i", "ignore.txt"])
     result = runner.invoke(ascmhl.commands.create, ["/root/", "-h", "xxh64", "-i", "ignore.txt"])
     os.rename("/root/A/A1.txt", "/root/A/_A1.txt")
+    os.rename("/root/A/AA/AA1.txt", "/root/A/AA/_AA1.txt")
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
     result = runner.invoke(ascmhl.commands.create, ["/root/", "-h", "xxh64"])
 
-    os.remove("/root/A/AA/AA1.txt")
+    os.remove("/root/A/AA/_AA1.txt")
     fs.create_file("/root/_B/B3.txt", contents="B2\n")
-    result = runner.invoke(ascmhl.commands.info, ["/root/", "-l"])
-    assert result.output == """/root/A/AA/ignore.txt | None | Ignored | Not Renamed | 4.00 B
-/root/A/AA | 4 | Available | Not Renamed | 0.00 B
-/root/A/_A1.txt | 4 | Renamed | A1.txt | 3.00 B
-/root/B/B1.txt | 3 | Available | Not Renamed | 3.00 B
-/root/_B/B3.txt | None | New | Not Renamed | 3.00 B
-/root/A | 4 | Available | Not Renamed | 0.00 B
-/root/B | 3 | Available | Not Renamed | 0.00 B
-/root/Stuff.txt | 2 | Available | Not Renamed | 6.00 B
-/root/_B | None | New | Not Renamed | 0.00 B
-/root/A/AA/AA1.txt | 2 | Missing | Not Renamed | None\n"""
+    result = runner.invoke(ascmhl.commands.diff, ["/root/", "-l"])
+    assert result.output == """/root/A/AA/ignore.txt | None | Ignored | None | 4.00 B | None
+/root/A/AA | 4 | Available | None | 0.00 B | None
+/root/A/_A1.txt | 4 | Available | A1.txt | 3.00 B | 3.00 B
+/root/B/B1.txt | 3 | Available | None | 3.00 B | 3.00 B
+/root/_B/B3.txt | None | New | None | 3.00 B | None
+/root/A | 4 | Available | None | 0.00 B | None
+/root/B | 3 | Available | None | 0.00 B | None
+/root/Stuff.txt | 2 | Available | None | 6.00 B | 6.00 B
+/root/_B | None | New | None | 0.00 B | None
+/root/A/AA/_AA1.txt | 2 | Missing | AA/AA1.txt | None | None
+"""
     assert result.exit_code == 0

@@ -983,6 +983,13 @@ def hash(file_path, hash_format):
     help="Verbose output",
 )
 @click.option(
+    "--list_files",
+    "-l",
+    default=False,
+    is_flag=True,
+    help="Info about all files in the file system",
+)
+@click.option(
     "ignore_list",
     "--ignore",
     "-i",
@@ -996,7 +1003,7 @@ def hash(file_path, hash_format):
     type=click.Path(exists=True),
     help="A file containing multiple file patterns to ignore.",
 )
-def diff(root_path, verbose, ignore_list, ignore_spec_file):
+def diff(root_path, verbose, list_files, ignore_list, ignore_spec_file):
     """
     Diff an entire folder structure
 
@@ -1007,7 +1014,7 @@ def diff(root_path, verbose, ignore_list, ignore_spec_file):
     in the file system are reported as errors. No new ASC MHL file / generation
     is created.
     """
-    diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignore_list, ignore_spec_file)
+    diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignore_list, ignore_spec_file, only_info=list_files)
     return
 
 
@@ -1293,14 +1300,7 @@ def flatten_history(
     type=click.Path(exists=True),
     help="Info for single file",
 )
-@click.option(
-    "--list_files",
-    "-l",
-    default=False,
-    is_flag=True,
-    help="Info about all files",
-)
-def info(verbose, single_file, list_files, root_path):
+def info(verbose, single_file, root_path):
     """
     Prints information from the ASC MHL history
 
@@ -1319,9 +1319,6 @@ def info(verbose, single_file, list_files, root_path):
             raise errors.NoMHLHistoryException(single_file[0])
         else:
             info_for_single_file(root_path, verbose, single_file)
-        return
-    elif list_files:
-        diff_entire_folder_against_full_history_subcommand(root_path, verbose, only_info=True, ignore_list=[])
         return
     else:
         info_for_entire_history(root_path, verbose)
@@ -1447,12 +1444,7 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         raise errors.NoMHLHistoryException(root_path)
 
     relative_path = existing_history.get_relative_file_path(os.path.abspath(path))
-    latest_hash_list = existing_history.hash_lists[-1]
-    latest_media_hash = latest_hash_list.find_media_hash_for_path(relative_path)
-    if not os.path.exists(path):
-        logger.info(f"{path} | {latest_hash_list.generation_number} | Missing | Not Renamed | None")
-        return
-
+    # find previous_paths of file
     previous_path = None
     for hash_list in existing_history.hash_lists:
         media_hash = hash_list.find_media_hash_for_path(relative_path)
@@ -1460,26 +1452,34 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
             continue
         if media_hash.previous_path and relative_path == media_hash.path:
             previous_path = media_hash.previous_path
+    if previous_path is None:
+        history, history_relative_path = existing_history.find_history_for_path(relative_path)
+        for hash_list in history.hash_lists:
+            media_hash = hash_list.find_media_hash_for_path(history_relative_path)
+            if media_hash is None:
+                continue
+            if media_hash.previous_path and history_relative_path == media_hash.path:
+                previous_path = media_hash.previous_path
+
+    latest_hash_list = existing_history.hash_lists[-1]
+    latest_media_hash = latest_hash_list.find_media_hash_for_path(relative_path)
+
+    history_file_size, history_bytes_string = utils.format_bytes(latest_media_hash.file_size) if latest_media_hash is not None and latest_media_hash.file_size is not None else (None, None)
+    history_size = f"{history_file_size:.2f} {history_bytes_string}" if history_file_size else None
+    if not os.path.exists(path):
+        logger.info(f"{path} | {latest_hash_list.generation_number} | Missing | {previous_path} | None | {history_size}")
+        return
 
     file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
-    compact_info = f"{path} | {latest_hash_list.generation_number} | Available | Not Renamed | {file_size:.2f} {bytes_string}"
     if latest_media_hash is not None:
-        if previous_path is not None:
-            compact_info = f"{path} | {latest_hash_list.generation_number} | Renamed | {previous_path} | {file_size:.2f} {bytes_string}"
-            logger.info(compact_info)
-            return
-        else:
-            logger.info(compact_info)
-            return
+        compact_info = f"{path} | {latest_hash_list.generation_number} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+        logger.info(compact_info)
+        return
 
     if ignore_spec.get_path_spec().match_file(relative_path):
-        compact_info = f"{path} | None | Ignored | Not Renamed | {file_size:.2f} {bytes_string}"
+        logger.info(f"{path} | None | Ignored | {previous_path} | {file_size:.2f} {bytes_string} | None")
     else:
-        compact_info = f"{path} | None | New | Not Renamed | {file_size:.2f} {bytes_string}"
-
-    logger.info(compact_info)
-
-
+        logger.info(f"{path} | None | New | {previous_path} | {file_size:.2f} {bytes_string} | None")
 
 @click.command()
 @click.argument("file_path", type=click.Path(exists=True))

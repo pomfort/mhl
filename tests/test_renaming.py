@@ -259,6 +259,7 @@ def test_detect_renamed_folders(fs):
     assert "a renamed" not in result.output
     assert not result.exception
 
+
 @freeze_time("2020-01-16 09:15:00")
 def test_detect_doubled_renamed_files(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")

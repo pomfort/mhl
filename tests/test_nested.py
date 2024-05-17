@@ -197,6 +197,7 @@ def test_create_nested_mhl_chain_missing(fs):
     assert result.exception
     assert result.exit_code == 32
 
+
 @freeze_time("2020-01-16 09:15:00")
 def test_deleted_ascmhl_folder(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
@@ -225,6 +226,7 @@ def test_deleted_ascmhl_folder(fs):
     assert result.exit_code == 30
     assert not os.path.exists("/root/ascmhl/0003_root_2020-01-16_091500Z.mhl")
 
+
 def test_deleted_ascmhl_folder_diff(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
     fs.create_file("/root/A/A1.txt", contents="A1\n")
@@ -247,6 +249,7 @@ def test_deleted_ascmhl_folder_diff(fs):
     assert result.exit_code == 30
     assert not os.path.exists("/root/ascmhl/0002_root_2020-01-16_091500Z.mhl")
 
+
 @freeze_time("2020-01-16 09:15:00")
 def test_new_root_folder(fs):
     fs.create_file("/root/A/A1.txt", contents="A1\n")
@@ -260,7 +263,9 @@ def test_new_root_folder(fs):
 
     result = runner.invoke(ascmhl.commands.info, ["/root/"])
     assert not result.exception
-    assert result.output == """Info with history at path: /root/
+    assert (
+        result.output
+        == """Info with history at path: /root/
   Generation 1 (2020-01-16T09:15:00+00:00)
 
 Child History at /root/A:
@@ -268,3 +273,4 @@ Child History at /root/A:
 
 Child History at /root/B:
   Generation 1 (2020-01-16T09:15:00+00:00)\n"""
+    )

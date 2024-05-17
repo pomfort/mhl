@@ -35,6 +35,7 @@ def test_simple_info(fs, simple_mhl_history):
     )
     assert result.exit_code == 0
 
+
 @freeze_time("2020-01-16 09:15:00")
 def test_verbose_sf_info(fs):
     fs.create_file("/root/A/A1.txt", contents="A1\n")
@@ -48,7 +49,8 @@ def test_verbose_sf_info(fs):
 
     result = runner.invoke(ascmhl.commands.info, ["-sf", "/root/A/_A1.txt", "-v"])
     assert (
-        result.output == """Info with history at path: /root/A
+        result.output
+        == """Info with history at path: /root/A
 _A1.txt:
   Generation 3 (2020-01-16T09:15:00+00:00) xxh64: 95e230e90be29dd6 (original) 
     /root/A/_A1.txt
@@ -76,6 +78,7 @@ A1.txt:
      File was renamed to _A1.txt\n"""
     )
     assert result.exit_code == 0
+
 
 @freeze_time("2020-01-16 09:15:00")
 def test_info(fs, simple_mhl_history):
@@ -130,6 +133,7 @@ def test_nested_info(fs, nested_mhl_histories):
     )
     assert result.exit_code == 0
 
+
 @freeze_time("2020-01-16 09:15:00")
 def test_diff_info_renamed_file(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
@@ -150,7 +154,9 @@ def test_diff_info_renamed_file(fs):
     os.remove("/root/A/AA/_AA1.txt")
     fs.create_file("/root/_B/B3.txt", contents="B2\n")
     result = runner.invoke(ascmhl.commands.diff, ["/root/", "-l"])
-    assert result.output == """/root/A/AA/ignore.txt | None | Ignored | None | 4.00 B | None
+    assert (
+        result.output
+        == """/root/A/AA/ignore.txt | None | Ignored | None | 4.00 B | None
 /root/A/AA | 4 | Available | None | 0.00 B | None
 /root/A/_A1.txt | 4 | Available | A1.txt | 3.00 B | 3.00 B
 /root/B/B1.txt | 3 | Available | None | 3.00 B | 3.00 B
@@ -158,7 +164,8 @@ def test_diff_info_renamed_file(fs):
 /root/A | 4 | Available | None | 0.00 B | None
 /root/B | 3 | Available | None | 0.00 B | None
 /root/Stuff.txt | 2 | Available | None | 6.00 B | 6.00 B
-/root/_B | None | New | None | 0.00 B | None
-/root/A/AA/_AA1.txt | 2 | Missing | AA/AA1.txt | None | None
+/root/_B | 2 | Available | None | 0.00 B | None
+/root/A/AA/_AA1.txt | 4 | Missing | AA/AA1.txt | None | 4.00 B
 """
+    )
     assert result.exit_code == 0

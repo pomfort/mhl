@@ -1014,11 +1014,15 @@ def diff(root_path, verbose, list_files, ignore_list, ignore_spec_file):
     in the file system are reported as errors. No new ASC MHL file / generation
     is created.
     """
-    diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignore_list, ignore_spec_file, only_info=list_files)
+    diff_entire_folder_against_full_history_subcommand(
+        root_path, verbose, ignore_list, ignore_spec_file, only_info=list_files
+    )
     return
 
 
-def diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignore_list=None, ignore_spec_file=None, only_info=False):
+def diff_entire_folder_against_full_history_subcommand(
+    root_path, verbose, ignore_list=None, ignore_spec_file=None, only_info=False
+):
     """
     Checks MHL hashes from all generations against all file hash entries.
 
@@ -1063,9 +1067,8 @@ def diff_entire_folder_against_full_history_subcommand(root_path, verbose, ignor
             relative_path = existing_history.get_relative_file_path(file_path)
             history, history_relative_path = existing_history.find_history_for_path(relative_path)
             if only_info:
-                used_ignore_spec = ignore.MHLIgnoreSpec(history.latest_ignore_patterns(), ignore_list,
-                                                   ignore_spec_file)
-                compact_info_for_single_file(history.get_root_path(), file_path, used_ignore_spec)
+                used_ignore_spec = ignore.MHLIgnoreSpec(history.latest_ignore_patterns(), ignore_list, ignore_spec_file)
+                compact_info_for_single_file(existing_history.get_root_path(), file_path, used_ignore_spec)
             if is_dir:
                 # TODO: find new directories here
                 continue
@@ -1359,9 +1362,7 @@ def log_child_histories(history):
         else:
             logger.info(f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})")
         for ref in hash_list.hash_list_references:
-            referenced_asc_folder = os.path.join(
-                os.path.dirname(history.asc_mhl_path), os.path.dirname(ref.path)
-            )
+            referenced_asc_folder = os.path.join(os.path.dirname(history.asc_mhl_path), os.path.dirname(ref.path))
             if not os.path.exists(referenced_asc_folder):
                 logger.error("Missing ASC MHL Folder: {}".format(referenced_asc_folder))
                 missing_ref_ascmhl_folder.add(referenced_asc_folder)
@@ -1369,7 +1370,7 @@ def log_child_histories(history):
     for child_history in history.child_histories:
         logger.info(f"\nChild History at {child_history.get_root_path()}:")
         log_child_histories(child_history)
-        
+
     if len(missing_ref_ascmhl_folder) > 0:
         raise errors.NoMHLHistoryException(missing_ref_ascmhl_folder)
 
@@ -1420,9 +1421,7 @@ def info_for_single_file(root_path, verbose, single_file):
                         )
                         renamed_files.append(os.path.join(root_path, media_hash.previous_path))
                     elif media_hash.previous_path and relative_path != media_hash.path:
-                        logger.info(
-                            "     File was renamed to {}".format(media_hash.path)
-                        )
+                        logger.info("     File was renamed to {}".format(media_hash.path))
                 else:
                     logger.info(
                         f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})"
@@ -1430,6 +1429,7 @@ def info_for_single_file(root_path, verbose, single_file):
                     )
         if renamed_files:
             info_for_single_file(root_path, verbose, renamed_files)
+
 
 def compact_info_for_single_file(root_path, path, ignore_spec=None):
     """
@@ -1464,14 +1464,25 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
     latest_hash_list = existing_history.hash_lists[-1]
     latest_media_hash = latest_hash_list.find_media_hash_for_path(relative_path)
 
-    history_file_size, history_bytes_string = utils.format_bytes(latest_media_hash.file_size) if latest_media_hash is not None and latest_media_hash.file_size is not None else (None, None)
+    history, history_relative_path = existing_history.find_history_for_path(relative_path)
+    if history.hash_lists[-1].find_media_hash_for_path(history_relative_path) is not None:
+        latest_hash_list = history.hash_lists[-1]
+        latest_media_hash = latest_hash_list.find_media_hash_for_path(history_relative_path)
+
+    history_file_size, history_bytes_string = (
+        utils.format_bytes(latest_media_hash.file_size)
+        if latest_media_hash is not None and latest_media_hash.file_size is not None
+        else (None, None)
+    )
     history_size = f"{history_file_size:.2f} {history_bytes_string}" if history_file_size else None
     if not os.path.exists(path):
-        logger.info(f"{path} | {latest_hash_list.generation_number} | Missing | {previous_path} | None | {history_size}")
+        logger.info(
+            f"{path} | {latest_hash_list.generation_number} | Missing | {previous_path} | None | {history_size}"
+        )
         return
 
     file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
-    if latest_media_hash is not None:
+    if latest_media_hash is not None or os.path.isdir(path):
         compact_info = f"{path} | {latest_hash_list.generation_number} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
         logger.info(compact_info)
         return
@@ -1480,6 +1491,7 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         logger.info(f"{path} | None | Ignored | {previous_path} | {file_size:.2f} {bytes_string} | None")
     else:
         logger.info(f"{path} | None | New | {previous_path} | {file_size:.2f} {bytes_string} | None")
+
 
 @click.command()
 @click.argument("file_path", type=click.Path(exists=True))
@@ -1543,7 +1555,9 @@ def test_for_missing_files(not_found_paths, root_path, ignore_spec: MHLIgnoreSpe
     return errors.CompletenessCheckFailedException()
 
 
-def commit_session(session, author_name, author_email, author_phone, author_role, location, comment, only_create_root=False):
+def commit_session(
+    session, author_name, author_email, author_phone, author_role, location, comment, only_create_root=False
+):
     creator_info = MHLCreatorInfo()
     creator_info.tool = MHLTool(ascmhl_tool_name, ascmhl_tool_version)
     creator_info.creation_date = utils.datetime_now_isostring()

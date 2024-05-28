@@ -7,6 +7,7 @@ __pycache__
 xsd/xsdvi.log
 .eggs
 *.egg-info/
+/.vscode
 
 docs/build
 docs/docenv

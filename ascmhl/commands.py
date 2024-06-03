@@ -337,6 +337,9 @@ def create_for_folder_subcommand(
                 not_found_path_history, relative_not_found_path = existing_history.find_history_for_path(
                     existing_history.get_relative_file_path(not_found_path)
                 )
+                not_found_media_hash = not_found_path_history.hash_lists[-1].find_media_hash_for_path(
+                    not_found_path_history.get_relative_file_path(not_found_path)
+                )
                 not_found_path_hash = not_found_path_history.find_first_hash_entry_for_path(relative_not_found_path)
 
                 new_path_history, new_path_media_hash = None, None
@@ -386,6 +389,7 @@ def create_for_folder_subcommand(
                                 )
                             )
                         new_path_media_hash.previous_path = relative_not_found_path
+                        new_path_media_hash.hash_entries.extend(not_found_media_hash.hash_entries)
                         found_file_paths.add(not_found_path)
         not_found_paths = not_found_paths - found_file_paths
 
@@ -1400,33 +1404,36 @@ def info_for_single_file(root_path, verbose, single_file):
             media_hash = hash_list.find_media_hash_for_path(relative_path)
             if media_hash is None:
                 continue
+            hash_entries = ""
             for hash_entry in media_hash.hash_entries:
-                if logger.verbose_logging == True:
-                    absolutePath = os.path.join(hash_list.get_root_path(), media_hash.path)
-                    creatorInfo = hash_list.creator_info.summary()
-                    processInfo = hash_list.process_info.summary()
-                    structure_hash_string = ""
-                    if hash_entry.structure_hash_string:
-                        structure_hash_string = f"/{hash_entry.structure_hash_string}"
-                    logger.info(
-                        f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})"
-                        f" {hash_entry.hash_format}: {hash_entry.hash_string}{structure_hash_string} ({hash_entry.action}) \n"
-                        f"    {absolutePath}\n"
-                        f"     CreatorInfo: {creatorInfo}\n"
-                        f"     ProcessInfo: {processInfo}"
-                    )
-                    if media_hash.previous_path and relative_path == media_hash.path:
-                        logger.info(
-                            "     In previous generations the file was named: {}".format(media_hash.previous_path)
-                        )
+                structure_hash_string = ""
+                if hash_entry.structure_hash_string:
+                    structure_hash_string = f"/{hash_entry.structure_hash_string}"
+                hash_entries += (
+                    f"{hash_entry.hash_format}: {hash_entry.hash_string}{structure_hash_string} ({hash_entry.action}) "
+                )
+            if logger.verbose_logging == True:
+                absolutePath = os.path.join(hash_list.get_root_path(), media_hash.path)
+                creatorInfo = hash_list.creator_info.summary()
+                processInfo = hash_list.process_info.summary()
+                logger.info(
+                    f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})"
+                    f" {hash_entries.strip()} \n"
+                    f"    {absolutePath}\n"
+                    f"     CreatorInfo: {creatorInfo}\n"
+                    f"     ProcessInfo: {processInfo}"
+                )
+                if media_hash.previous_path and relative_path == media_hash.path:
+                    logger.info("     In previous generations the file was named: {}".format(media_hash.previous_path))
+                    if os.path.join(root_path, media_hash.previous_path) not in renamed_files:
                         renamed_files.append(os.path.join(root_path, media_hash.previous_path))
-                    elif media_hash.previous_path and relative_path != media_hash.path:
-                        logger.info("     File was renamed to {}".format(media_hash.path))
-                else:
-                    logger.info(
-                        f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})"
-                        f" {hash_entry.hash_format}: {hash_entry.hash_string} ({hash_entry.action})"
-                    )
+                elif media_hash.previous_path and relative_path != media_hash.path:
+                    logger.info("     File was renamed to {}".format(media_hash.path))
+            else:
+                logger.info(
+                    f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})"
+                    f" {hash_entries.strip()}"
+                )
         if renamed_files:
             info_for_single_file(root_path, verbose, renamed_files)
 

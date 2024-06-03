@@ -8,6 +8,7 @@ __email__ = "opensource@pomfort.com"
 """
 
 import datetime
+import os
 import time
 
 
@@ -59,3 +60,11 @@ def format_bytes(size):
         size /= power
         n += 1
     return size, power_labels[n] + "B"
+
+
+def get_case_sensitive_file_names_in_folder(root):
+    result = []
+    for dir_path, dir_names, file_names in os.walk(root):
+        result.extend([os.path.join(dir_path, file_name) for file_name in file_names])
+        result.extend([os.path.join(dir_path, dir_name) for dir_name in dir_names])
+    return result

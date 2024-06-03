@@ -1482,7 +1482,7 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         else (None, None)
     )
     history_size = f"{history_file_size:.2f} {history_bytes_string}" if history_file_size else None
-    if not os.path.exists(path):
+    if path not in utils.get_case_sensitive_file_names_in_folder(root_path):
         logger.info(
             f"{path} | {latest_hash_list.generation_number} | Missing | {previous_path} | None | {history_size}"
         )

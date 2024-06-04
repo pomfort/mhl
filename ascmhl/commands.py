@@ -1110,14 +1110,13 @@ def diff_entire_folder_against_full_history_subcommand(
     if only_info:
         for not_found_path in not_found_paths:
             compact_info_for_single_file(root_path, not_found_path)
+        return
 
     if len(missing_asc_mhl_folder) > 0:
         exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
         if exception:
             raise errors.MissingMHLHistoryOrRenamedFolder(", ".join(missing_asc_mhl_folder))
         raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
-    if only_info:
-        return
 
     exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
     if num_failed_verifications > 0:

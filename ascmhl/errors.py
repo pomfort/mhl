@@ -71,3 +71,12 @@ class MissingMHLManifestException(click.ClickException):
 
     def __init__(self, path):
         super().__init__(f"Missing ASC MHL manifest in history at path {path}")
+
+
+class MissingMHLHistoryOrRenamedFolder(click.ClickException):
+    exit_code = 34
+
+    def __init__(self, path):
+        super().__init__(
+            f"Missing ASC MHL history at path {path}. The folder containing the history was potentially renamed."
+        )

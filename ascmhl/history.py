@@ -10,7 +10,7 @@ __email__ = "opensource@pomfort.com"
 from __future__ import annotations
 import os
 import re
-from datetime import datetime, date, time
+from datetime import datetime
 
 from . import hasher
 from .__version__ import ascmhl_folder_name, ascmhl_file_extension, ascmhl_chainfile_name, ascmhl_collectionfile_name
@@ -19,7 +19,7 @@ from .utils import datetime_now_filename_string
 from typing import Tuple, List, Dict, Optional, Set
 from . import logger, errors
 from .chain import MHLChain
-from .hashlist import MHLHashList, MHLHashEntry
+from .hashlist import MHLHashList, MHLHashEntry, MHLMediaHash
 
 
 class MHLHistory:
@@ -114,6 +114,19 @@ class MHLHistory:
                     return hash_entry
         return None
 
+    def find_last_media_hash_for_path(self, relative_path: str) -> Optional[MHLMediaHash]:
+        """Searches the history for the latest hash of a file
+
+        starts with the last generation, if we don't find it there we continue to look in all other generations
+        until we've found the last appearance of the give file.
+        """
+        for hash_list in reversed(self.hash_lists):
+            media_hash = hash_list.find_media_hash_for_path(relative_path)
+            if media_hash is None:
+                continue
+            return media_hash
+        return None
+
     # methods to query and compare hashes
     def find_directory_hash_entries_for_path(self, relative_path: str) -> List[MHLHashEntry]:
         """Searches the history for directory hash entries of a folder
@@ -204,6 +217,16 @@ class MHLHistory:
         for child_history in self.child_histories:
             all_paths.update(child_history.renamed_path_with_previous_path())
         return all_paths
+
+    def find_previous_path_in_history(self, new_path: str) -> Optional[str]:
+        previous_path = None
+        for hash_list in self.hash_lists:
+            media_hash = hash_list.find_media_hash_for_path(new_path)
+            if media_hash is None:
+                continue
+            if media_hash.previous_path and new_path == media_hash.path:
+                previous_path = media_hash.previous_path
+        return previous_path
 
     def hash_list_with_file_name(self, file_name) -> Optional[MHLHashList]:
         for hash_list in self.hash_lists:

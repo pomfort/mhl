@@ -1456,46 +1456,48 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         raise errors.NoMHLHistoryException(root_path)
 
     relative_path = existing_history.get_relative_file_path(os.path.abspath(path))
-    # find previous_paths of file
-    previous_path = None
-    for hash_list in existing_history.hash_lists:
-        media_hash = hash_list.find_media_hash_for_path(relative_path)
-        if media_hash is None:
-            continue
-        if media_hash.previous_path and relative_path == media_hash.path:
-            previous_path = media_hash.previous_path
-    if previous_path is None:
-        history, history_relative_path = existing_history.find_history_for_path(relative_path)
-        for hash_list in history.hash_lists:
-            media_hash = hash_list.find_media_hash_for_path(history_relative_path)
-            if media_hash is None:
-                continue
-            if media_hash.previous_path and history_relative_path == media_hash.path:
-                previous_path = media_hash.previous_path
 
-    latest_hash_list = existing_history.hash_lists[-1]
-    latest_media_hash = latest_hash_list.find_media_hash_for_path(relative_path)
-
+    # look for nested histories
     history, history_relative_path = existing_history.find_history_for_path(relative_path)
-    if history.hash_lists[-1].find_media_hash_for_path(history_relative_path) is not None:
-        latest_hash_list = history.hash_lists[-1]
-        latest_media_hash = latest_hash_list.find_media_hash_for_path(history_relative_path)
+    if history.find_last_media_hash_for_path(history_relative_path) is not None:
+        relative_path = history_relative_path
+        existing_history = history
+    latest_media_hash = existing_history.find_last_media_hash_for_path(relative_path)
 
-    history_file_size, history_bytes_string = (
-        utils.format_bytes(latest_media_hash.file_size)
-        if latest_media_hash is not None and latest_media_hash.file_size is not None
-        else (None, None)
-    )
-    history_size = f"{history_file_size:.2f} {history_bytes_string}" if history_file_size else None
+    previous_path = existing_history.find_previous_path_in_history(relative_path)
+    history_size = latest_media_hash.get_file_size_from_history() if latest_media_hash else ""
+
     if path not in utils.get_case_sensitive_file_names_in_folder(root_path):
         logger.info(
-            f"{path} | {latest_hash_list.generation_number} | Missing | {previous_path} | None | {history_size}"
+            f"{path} | {existing_history.latest_generation_number()} | Missing | {previous_path} | None | {history_size}"
         )
         return
 
     file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
-    if latest_media_hash is not None or os.path.isdir(path):
-        compact_info = f"{path} | {latest_hash_list.generation_number} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+
+    if os.path.isdir(path):
+        # if directory media hash is found, look for nested histories to get the correct generation number
+        if latest_media_hash:
+            history, history_relative_path = existing_history.find_history_for_path(relative_path)
+            compact_info = f"{path} | {history.latest_generation_number()} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+            logger.info(compact_info)
+            return
+
+        # if no directory media hash was found: look if files in folder are registered, if not the folder is new
+        files_in_folder = utils.get_case_sensitive_file_names_in_folder(path)
+        for file in files_in_folder:
+            history, history_relative_path = existing_history.find_history_for_path(
+                existing_history.get_relative_file_path(file)
+            )
+            if history.find_last_media_hash_for_path(history_relative_path):
+                compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+                logger.info(compact_info)
+                return
+        logger.info(f"{path} | None | New | {previous_path} | {file_size:.2f} {bytes_string} | None")
+        return
+
+    if latest_media_hash is not None:
+        compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
         logger.info(compact_info)
         return
 

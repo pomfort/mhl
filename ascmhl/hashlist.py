@@ -12,7 +12,7 @@ from typing import List, Dict, Optional, Set
 from datetime import datetime
 import os
 
-from . import logger
+from . import logger, utils
 from .ignore import MHLIgnoreSpec
 from .__version__ import ascmhl_reference_hash_format
 from .hasher import hash_file
@@ -207,6 +207,12 @@ class MHLMediaHash:
                 f"{action_string}"
                 f": {self.path}"
             )
+
+    def get_file_size_from_history(self) -> str:
+        history_file_size, history_bytes_string = (
+            utils.format_bytes(self.file_size) if self is not None and self.file_size is not None else (None, None)
+        )
+        return f"{history_file_size:.2f} {history_bytes_string}" if history_file_size else None
 
 
 class MHLHashEntry:

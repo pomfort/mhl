@@ -162,7 +162,7 @@ def test_diff_info_renamed_file(fs):
 /root/A | 4 | Available | None | 0.00 B | None
 /root/B | 3 | Available | None | 0.00 B | None
 /root/Stuff.txt | 2 | Available | None | 6.00 B | 6.00 B
-/root/_B | 2 | Available | None | 0.00 B | None
+/root/_B | None | New | None | 0.00 B | None
 /root/A/AA/_AA1.txt | 4 | Missing | AA/AA1.txt | None | 4.00 B
 """
     )

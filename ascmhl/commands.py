@@ -1117,6 +1117,15 @@ def diff_entire_folder_against_full_history_subcommand(
         for not_found_path in not_found_paths:
             compact_info_for_single_file(root_path, not_found_path)
 
+            # if directories are not registered in history, use this to identify missing folders
+            dirname = os.path.dirname(not_found_path)
+            while dirname != root_path:
+                if os.path.exists(dirname):
+                    break
+                if not os.path.exists(dirname) and dirname not in not_found_paths:
+                    compact_info_for_single_file(root_path, dirname)
+                dirname = os.path.dirname(dirname)
+
     if len(missing_asc_mhl_folder) > 0:
         exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
         if exception:

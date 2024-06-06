@@ -337,7 +337,7 @@ def create_for_folder_subcommand(
                 not_found_path_history, relative_not_found_path = existing_history.find_history_for_path(
                     existing_history.get_relative_file_path(not_found_path)
                 )
-                not_found_media_hash = not_found_path_history.hash_lists[-1].find_media_hash_for_path(
+                not_found_media_hash = not_found_path_history.find_last_media_hash_for_path(
                     not_found_path_history.get_relative_file_path(not_found_path)
                 )
                 not_found_path_hash = not_found_path_history.find_first_hash_entry_for_path(relative_not_found_path)
@@ -389,7 +389,13 @@ def create_for_folder_subcommand(
                                 )
                             )
                         new_path_media_hash.previous_path = relative_not_found_path
-                        new_path_media_hash.hash_entries.extend(not_found_media_hash.hash_entries)
+                        new_path_media_hash.hash_entries.extend(
+                            [
+                                hash
+                                for hash in not_found_media_hash.hash_entries
+                                if new_path_media_hash.find_hash_entry_for_format(hash.hash_format) is None
+                            ]
+                        )
                         found_file_paths.add(not_found_path)
         not_found_paths = not_found_paths - found_file_paths
 
@@ -1110,13 +1116,15 @@ def diff_entire_folder_against_full_history_subcommand(
     if only_info:
         for not_found_path in not_found_paths:
             compact_info_for_single_file(root_path, not_found_path)
-        return
 
     if len(missing_asc_mhl_folder) > 0:
         exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
         if exception:
             raise errors.MissingMHLHistoryOrRenamedFolder(", ".join(missing_asc_mhl_folder))
         raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
+
+    if only_info:
+        return
 
     exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
     if num_failed_verifications > 0:

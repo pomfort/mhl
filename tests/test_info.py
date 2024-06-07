@@ -45,23 +45,12 @@ def test_verbose_sf_info(fs):
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64"])
     os.rename("/root/A/A1.txt", "/root/A/_A1.txt")
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
-    result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64"])
+    result = runner.invoke(ascmhl.commands.create, ["/root/A"])
 
     result = runner.invoke(ascmhl.commands.info, ["-sf", "/root/A/_A1.txt", "-v"])
     assert (
         result.output
         == """Info with history at path: /root/A
-_A1.txt:
-  Generation 3 (2020-01-16T09:15:00+00:00) xxh64: 95e230e90be29dd6 (original) 
-    /root/A/_A1.txt
-     CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
-     ProcessInfo: in-place
-     In previous generations the file was named: A1.txt
-  Generation 4 (2020-01-16T09:15:00+00:00) xxh64: 95e230e90be29dd6 (verified) 
-    /root/A/_A1.txt
-     CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
-     ProcessInfo: in-place
-Info with history at path: /root/A
 A1.txt:
   Generation 1 (2020-01-16T09:15:00+00:00) xxh64: 95e230e90be29dd6 (original) 
     /root/A/A1.txt
@@ -71,11 +60,17 @@ A1.txt:
     /root/A/A1.txt
      CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
      ProcessInfo: in-place
+Info with history at path: /root/A
+_A1.txt:
   Generation 3 (2020-01-16T09:15:00+00:00) xxh64: 95e230e90be29dd6 (original) 
     /root/A/_A1.txt
      CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
      ProcessInfo: in-place
-     File was renamed to _A1.txt\n"""
+  Generation 4 (2020-01-16T09:15:00+00:00) xxh128: f50890cfaaec8a14d8a611f11484ec72 (verified) xxh64: 95e230e90be29dd6 (verified) 
+    /root/A/_A1.txt
+     CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
+     ProcessInfo: in-place
+"""
     )
     assert result.exit_code == 0
 
@@ -148,22 +143,24 @@ def test_diff_info_renamed_file(fs):
     os.rename("/root/A/AA/AA1.txt", "/root/A/AA/_AA1.txt")
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
     result = runner.invoke(ascmhl.commands.create, ["/root/", "-h", "xxh64"])
+    os.rename("/root/A/AA/_AA1.txt", "/root/A/AA/__AA1.txt")
+    result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
 
-    os.remove("/root/A/AA/_AA1.txt")
+    os.remove("/root/A/AA/__AA1.txt")
     fs.create_file("/root/_B/B3.txt", contents="B2\n")
     result = runner.invoke(ascmhl.commands.diff, ["/root/", "-l"])
     assert (
         result.output
         == """/root/A/AA/ignore.txt | None | Ignored | None | 4.00 B | None
-/root/A/AA | 4 | Available | None | 0.00 B | None
-/root/A/_A1.txt | 4 | Available | A1.txt | 3.00 B | 3.00 B
+/root/A/AA | 5 | Available | None | 0.00 B | None
+/root/A/_A1.txt | 5 | Available | A1.txt | 3.00 B | 3.00 B
 /root/B/B1.txt | 3 | Available | None | 3.00 B | 3.00 B
 /root/_B/B3.txt | None | New | None | 3.00 B | None
-/root/A | 4 | Available | None | 0.00 B | None
+/root/A | 5 | Available | None | 0.00 B | None
 /root/B | 3 | Available | None | 0.00 B | None
 /root/Stuff.txt | 2 | Available | None | 6.00 B | 6.00 B
 /root/_B | None | New | None | 0.00 B | None
-/root/A/AA/_AA1.txt | 4 | Missing | AA/AA1.txt | None | 4.00 B
+/root/A/AA/__AA1.txt | 5 | Missing | AA/_AA1.txt, AA/AA1.txt | None | 4.00 B
 """
     )
     assert result.exit_code == 0

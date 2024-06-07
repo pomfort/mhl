@@ -62,9 +62,9 @@ def test_verify_renamed_files(fs):
 
     result = runner.invoke(ascmhl.commands.info, ["-sf", "/root/A/AA/AA1_renamed.txt", "-v", "/root"])
     assert not result.exception
-    assert result.output.count("AA1.txt") == 3
-    assert result.output.count("AA1_renamed.txt") == 4
-    assert result.output.count("Generation 2") == 2
+    assert result.output.count("AA1.txt") == 2
+    assert result.output.count("AA1_renamed.txt") == 2
+    assert result.output.count("Generation 2") == 1
 
 
 @freeze_time("2020-01-16 09:15:00")

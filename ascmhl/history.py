@@ -218,15 +218,17 @@ class MHLHistory:
             all_paths.update(child_history.renamed_path_with_previous_path())
         return all_paths
 
-    def find_previous_path_in_history(self, new_path: str) -> Optional[str]:
-        previous_path = None
+    def find_previous_path_in_history(self, new_path: str, previous_paths=None) -> [str]:
+        if previous_paths is None:
+            previous_paths = []
         for hash_list in self.hash_lists:
             media_hash = hash_list.find_media_hash_for_path(new_path)
             if media_hash is None:
                 continue
-            if media_hash.previous_path and new_path == media_hash.path:
-                previous_path = media_hash.previous_path
-        return previous_path
+            if media_hash.previous_path and media_hash.previous_path != new_path:
+                previous_paths.append(media_hash.previous_path)
+                previous_paths = self.find_previous_path_in_history(media_hash.previous_path, previous_paths)
+        return previous_paths
 
     def hash_list_with_file_name(self, file_name) -> Optional[MHLHashList]:
         for hash_list in self.hash_lists:

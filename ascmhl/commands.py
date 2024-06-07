@@ -1411,17 +1411,21 @@ def info_for_single_file(root_path, verbose, single_file):
     if not os.path.isabs(root_path):
         root_path = os.path.join(os.getcwd(), root_path)
 
-    logger.info(f"Info with history at path: {root_path}")
-
     existing_history = MHLHistory.load_from_path(root_path)
 
     if len(existing_history.hash_lists) == 0:
         raise errors.NoMHLHistoryException(root_path)
 
     for path in single_file:
-        renamed_files = []
         relative_path = existing_history.get_relative_file_path(os.path.abspath(path))
+
+        previous_paths = existing_history.find_previous_path_in_history(relative_path)
+        if previous_paths:
+            info_for_single_file(root_path, verbose, [os.path.join(root_path, path) for path in previous_paths])
+
+        logger.info(f"Info with history at path: {root_path}")
         logger.info(f"{relative_path}:")
+
         for hash_list in existing_history.hash_lists:
             media_hash = hash_list.find_media_hash_for_path(relative_path)
             if media_hash is None:
@@ -1435,6 +1439,9 @@ def info_for_single_file(root_path, verbose, single_file):
                     f"{hash_entry.hash_format}: {hash_entry.hash_string}{structure_hash_string} ({hash_entry.action}) "
                 )
             if logger.verbose_logging == True:
+                if media_hash.previous_path and relative_path != media_hash.path:
+                    continue
+
                 absolutePath = os.path.join(hash_list.get_root_path(), media_hash.path)
                 creatorInfo = hash_list.creator_info.summary()
                 processInfo = hash_list.process_info.summary()
@@ -1445,19 +1452,11 @@ def info_for_single_file(root_path, verbose, single_file):
                     f"     CreatorInfo: {creatorInfo}\n"
                     f"     ProcessInfo: {processInfo}"
                 )
-                if media_hash.previous_path and relative_path == media_hash.path:
-                    logger.info("     In previous generations the file was named: {}".format(media_hash.previous_path))
-                    if os.path.join(root_path, media_hash.previous_path) not in renamed_files:
-                        renamed_files.append(os.path.join(root_path, media_hash.previous_path))
-                elif media_hash.previous_path and relative_path != media_hash.path:
-                    logger.info("     File was renamed to {}".format(media_hash.path))
             else:
                 logger.info(
                     f"  Generation {hash_list.generation_number} ({hash_list.creator_info.creation_date})"
                     f" {hash_entries.strip()}"
                 )
-        if renamed_files:
-            info_for_single_file(root_path, verbose, renamed_files)
 
 
 def compact_info_for_single_file(root_path, path, ignore_spec=None):
@@ -1481,12 +1480,12 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         existing_history = history
     latest_media_hash = existing_history.find_last_media_hash_for_path(relative_path)
 
-    previous_path = existing_history.find_previous_path_in_history(relative_path)
+    previous_paths = existing_history.find_previous_path_in_history(relative_path)
     history_size = latest_media_hash.get_file_size_from_history() if latest_media_hash else ""
 
     if path not in utils.get_case_sensitive_file_names_in_folder(root_path):
         logger.info(
-            f"{path} | {existing_history.latest_generation_number()} | Missing | {previous_path} | None | {history_size}"
+            f"{path} | {existing_history.latest_generation_number()} | Missing | {", ".join(previous_paths) if previous_paths else None} | None | {history_size}"
         )
         return
 
@@ -1496,7 +1495,7 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         # if directory media hash is found, look for nested histories to get the correct generation number
         if latest_media_hash:
             history, history_relative_path = existing_history.find_history_for_path(relative_path)
-            compact_info = f"{path} | {history.latest_generation_number()} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+            compact_info = f"{path} | {history.latest_generation_number()} | Available | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | {history_size}"
             logger.info(compact_info)
             return
 
@@ -1507,21 +1506,27 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
                 existing_history.get_relative_file_path(file)
             )
             if history.find_last_media_hash_for_path(history_relative_path):
-                compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+                compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | {history_size}"
                 logger.info(compact_info)
                 return
-        logger.info(f"{path} | None | New | {previous_path} | {file_size:.2f} {bytes_string} | None")
+        logger.info(
+            f"{path} | None | New | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
+        )
         return
 
     if latest_media_hash is not None:
-        compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {previous_path} | {file_size:.2f} {bytes_string} | {history_size}"
+        compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | {history_size}"
         logger.info(compact_info)
         return
 
     if ignore_spec.get_path_spec().match_file(relative_path):
-        logger.info(f"{path} | None | Ignored | {previous_path} | {file_size:.2f} {bytes_string} | None")
+        logger.info(
+            f"{path} | None | Ignored | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
+        )
     else:
-        logger.info(f"{path} | None | New | {previous_path} | {file_size:.2f} {bytes_string} | None")
+        logger.info(
+            f"{path} | None | New | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
+        )
 
 
 @click.command()

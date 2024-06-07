@@ -101,6 +101,24 @@ def test_verify_renamed_file_but_also_changed_file(fs):
     result = runner.invoke(ascmhl.commands.verify, ["/root"])
     assert result.exception
 
+@freeze_time("2020-01-16 09:15:00")
+def test_detect_renamed_file_but_also_changed_file(fs):
+    fs.create_file("/root/Stuff.txt", contents="stuff\n")
+    fs.create_file("/root/A/A1.txt", contents="A1\n")
+    fs.create_file("/root/B/B1.txt", contents="B1\n")
+    fs.create_file("/root/A/AA/AA1.txt", contents="AA1\n")
+
+    runner = CliRunner()
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v"])
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v"])
+    assert not result.exception
+
+    os.rename("/root/A/AA/AA1.txt", "/root/A/AA/AA1_renamed.txt")
+    with open("/root/A/AA/AA1_renamed.txt", "a") as f:
+        f.write("change file")
+
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-dr", "-h", "xxh64", "-v"])
+    assert result.exit_code == 10
 
 @freeze_time("2020-01-16 09:15:00")
 def test_detect_renamed_files(fs):

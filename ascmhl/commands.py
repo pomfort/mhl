@@ -1491,6 +1491,12 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
 
     file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
 
+    if ignore_spec.get_path_spec().match_file(relative_path):
+        logger.info(
+            f"{path} | None | Ignored | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
+        )
+        return
+
     if os.path.isdir(path):
         # if directory media hash is found, look for nested histories to get the correct generation number
         if latest_media_hash:
@@ -1519,14 +1525,10 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
         logger.info(compact_info)
         return
 
-    if ignore_spec.get_path_spec().match_file(relative_path):
-        logger.info(
-            f"{path} | None | Ignored | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
-        )
-    else:
-        logger.info(
-            f"{path} | None | New | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
-        )
+
+    logger.info(
+        f"{path} | None | New | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
+    )
 
 
 @click.command()

@@ -1114,6 +1114,7 @@ def diff_entire_folder_against_full_history_subcommand(
                 missing_asc_mhl_folder.add(os.path.dirname(referenced_asc_folder))
 
     if only_info:
+        not_registered_but_missing_folders = []
         for not_found_path in not_found_paths:
             compact_info_for_single_file(root_path, not_found_path)
 
@@ -1122,12 +1123,17 @@ def diff_entire_folder_against_full_history_subcommand(
             while dirname != root_path:
                 if os.path.exists(dirname):
                     break
-                if not os.path.exists(dirname) and dirname not in not_found_paths:
+                if (
+                    not os.path.exists(dirname)
+                    and dirname not in not_found_paths
+                    and dirname not in not_registered_but_missing_folders
+                ):
                     compact_info_for_single_file(root_path, dirname)
+                    not_registered_but_missing_folders.append(dirname)
                 dirname = os.path.dirname(dirname)
 
     if len(missing_asc_mhl_folder) > 0:
-        exception = test_for_missing_files(not_found_paths, root_path, ignore_spec)
+        exception = test_for_missing_files(not_found_paths, root_path, ignore_spec, verbose=False)
         if exception:
             raise errors.MissingMHLHistoryOrRenamedFolder(", ".join(missing_asc_mhl_folder))
         raise errors.NoMHLHistoryException(", ".join(missing_asc_mhl_folder))
@@ -1421,7 +1427,11 @@ def info_for_single_file(root_path, verbose, single_file):
 
         previous_paths = existing_history.find_previous_path_in_history(relative_path)
         if previous_paths:
-            info_for_single_file(root_path, verbose, [os.path.join(root_path, path) for path in previous_paths])
+            check_previous_paths = []
+            for previous_path in reversed(previous_paths):
+                if os.path.join(root_path, previous_path) not in single_file:
+                    check_previous_paths.append(os.path.join(root_path, previous_path))
+            info_for_single_file(root_path, verbose, check_previous_paths)
 
         logger.info(f"Info with history at path: {root_path}")
         logger.info(f"{relative_path}:")
@@ -1580,16 +1590,17 @@ def xsd_schema_check(file_path, directory_file, xsd_file):
         raise errors.VerificationFailedException
 
 
-def test_for_missing_files(not_found_paths, root_path, ignore_spec: MHLIgnoreSpec = MHLIgnoreSpec()):
+def test_for_missing_files(not_found_paths, root_path, ignore_spec: MHLIgnoreSpec = MHLIgnoreSpec(), verbose=True):
     ignore_path_spec = ignore_spec.get_path_spec()
     # update to exclude our ignored files
     not_found_paths = [x for x in not_found_paths if not ignore_path_spec.match_file(x)]
     if len(not_found_paths) == 0:
         return None
     # test our not_found_paths against our ignore spec to ensure these weren't explicitly ignored.
-    logger.error(f"ERROR: {len(not_found_paths)} missing file(s):")
-    for path in not_found_paths:
-        logger.error(f"  {os.path.relpath(path, root_path)}")
+    if verbose:
+        logger.error(f"ERROR: {len(not_found_paths)} missing file(s):")
+        for path in not_found_paths:
+            logger.error(f"  {os.path.relpath(path, root_path)}")
     return errors.CompletenessCheckFailedException()
 
 

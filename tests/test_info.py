@@ -47,7 +47,10 @@ def test_verbose_sf_info(fs):
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
     result = runner.invoke(ascmhl.commands.create, ["/root/A"])
 
-    result = runner.invoke(ascmhl.commands.info, ["-sf", "/root/A/_A1.txt", "-v"])
+    os.rename("/root/A/_A1.txt", "/root/A/__A1.txt")
+    result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
+
+    result = runner.invoke(ascmhl.commands.info, ["-sf", "/root/A/__A1.txt", "-v"])
     assert (
         result.output
         == """Info with history at path: /root/A
@@ -68,6 +71,12 @@ _A1.txt:
      ProcessInfo: in-place
   Generation 4 (2020-01-16T09:15:00+00:00) xxh128: f50890cfaaec8a14d8a611f11484ec72 (verified) xxh64: 95e230e90be29dd6 (verified) 
     /root/A/_A1.txt
+     CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
+     ProcessInfo: in-place
+Info with history at path: /root/A
+__A1.txt:
+  Generation 5 (2020-01-16T09:15:00+00:00) xxh64: 95e230e90be29dd6 (original) 
+    /root/A/__A1.txt
      CreatorInfo: myHost.local, ascmhl 0.1.dev471+g8b828f7.d20240313
      ProcessInfo: in-place
 """

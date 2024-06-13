@@ -1491,27 +1491,26 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
     latest_media_hash = existing_history.find_last_media_hash_for_path(relative_path)
 
     previous_paths = existing_history.find_previous_path_in_history(relative_path)
+    previous_paths_string = ", ".join(previous_paths) if previous_paths else None
     history_size = latest_media_hash.get_file_size_from_history() if latest_media_hash else ""
 
     if path not in utils.get_case_sensitive_file_names_in_folder(root_path):
         logger.info(
-            f"{path} | {existing_history.latest_generation_number()} | Missing | {", ".join(previous_paths) if previous_paths else None} | None | {history_size}"
+            f"{path} | {existing_history.latest_generation_number()} | Missing | {previous_paths_string} | None | {history_size}"
         )
         return
 
     file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
 
     if ignore_spec.get_path_spec().match_file(relative_path):
-        logger.info(
-            f"{path} | None | Ignored | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
-        )
+        logger.info(f"{path} | None | Ignored | {previous_paths_string} | {file_size:.2f} {bytes_string} | None")
         return
 
     if os.path.isdir(path):
         # if directory media hash is found, look for nested histories to get the correct generation number
         if latest_media_hash:
             history, history_relative_path = existing_history.find_history_for_path(relative_path)
-            compact_info = f"{path} | {history.latest_generation_number()} | Available | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | {history_size}"
+            compact_info = f"{path} | {history.latest_generation_number()} | Available | {previous_paths_string} | {file_size:.2f} {bytes_string} | {history_size}"
             logger.info(compact_info)
             return
 
@@ -1522,23 +1521,18 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
                 existing_history.get_relative_file_path(file)
             )
             if history.find_last_media_hash_for_path(history_relative_path):
-                compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | {history_size}"
+                compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {previous_paths_string} | {file_size:.2f} {bytes_string} | {history_size}"
                 logger.info(compact_info)
                 return
-        logger.info(
-            f"{path} | None | New | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
-        )
+        logger.info(f"{path} | None | New | {previous_paths_string} | {file_size:.2f} {bytes_string} | None")
         return
 
     if latest_media_hash is not None:
-        compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | {history_size}"
+        compact_info = f"{path} | {existing_history.latest_generation_number()} | Available | {previous_paths_string} | {file_size:.2f} {bytes_string} | {history_size}"
         logger.info(compact_info)
         return
 
-
-    logger.info(
-        f"{path} | None | New | {", ".join(previous_paths) if previous_paths else None} | {file_size:.2f} {bytes_string} | None"
-    )
+    logger.info(f"{path} | None | New | {previous_paths_string} | {file_size:.2f} {bytes_string} | None")
 
 
 @click.command()

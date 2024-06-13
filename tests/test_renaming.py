@@ -13,6 +13,7 @@ from freezegun import freeze_time
 
 import ascmhl
 from ascmhl import hasher
+from ascmhl.history import MHLHistory
 
 
 @freeze_time("2020-01-16 09:15:00")
@@ -307,3 +308,56 @@ def test_detect_doubled_renamed_files(fs):
     assert not result.exception
     result = runner.invoke(ascmhl.commands.diff, ["/root", "-v"])
     assert not result.exception
+
+
+@freeze_time("2020-01-16 09:15:00")
+def test_rename_a_single_file(fs, simple_mhl_history):
+    runner = CliRunner()
+    os.rename("/root/A/A1.txt", "/root/A/A1_renamed.txt")
+
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v", "-dr"])
+    assert not result.exception
+
+    root_history = MHLHistory.load_from_path("/root")
+    hash_list = root_history.hash_lists[-1]
+
+    # the media hash entry references the old file name as previous path
+    renamed_media_hash = hash_list.find_media_hash_for_path("A/A1_renamed.txt")
+    # action should probably be verified
+    assert renamed_media_hash.hash_entries[0].action == "original"
+    assert renamed_media_hash.hash_entries[0].hash_string == "95e230e90be29dd6"
+    assert renamed_media_hash.previous_path == "A/A1.txt"
+    # and it only one hash entry
+    assert len(renamed_media_hash.hash_entries) == 1
+
+    # the log output of the tool should state the rename and the new hash (as original??)
+    assert "created original hash for     A/A1_renamed.txt  xxh64: 95e230e90be29dd6"
+    assert "a renamed file was detected: from A/A1.txt to A/A1_renamed.txt" in result.output
+
+@freeze_time("2020-01-16 09:15:00")
+def test_renaming_swapping_two_files_in_one_step(fs, simple_mhl_history):
+    runner = CliRunner()
+    os.rename("/root/A/A1.txt", "/root/Stuff2.txt")
+    os.rename("/root/Stuff.txt", "/root/A/A1.txt")
+    os.rename("/root/Stuff2.txt", "/root/Stuff.txt")
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-v", "-dr"])
+    # swapping two files in one generation should not be detected as rename
+    assert result.exit_code == 11
+
+
+@freeze_time("2020-01-16 09:15:00")
+def test_renaming_swapping_two_files_in_three_steps(fs, simple_mhl_history):
+    runner = CliRunner()
+    os.rename("/root/A/A1.txt", "/root/Stuff2.txt")
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-v", "-dr", "-h", "xxh64"])
+    assert not result.exception
+
+    os.rename("/root/Stuff.txt", "/root/A/A1.txt")
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-v", "-dr", "-h", "xxh64"])
+    # reusing a previous name from the history should not result in an error ??
+    assert result.exception
+
+    os.rename("/root/Stuff2.txt", "/root/Stuff.txt")
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-v", "-dr", "-h", "xxh64"])
+    # swapping two files in three steps should work ??
+    assert result.exception

@@ -45,8 +45,8 @@ def test_verbose_sf_info(fs):
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64"])
     os.rename("/root/A/A1.txt", "/root/A/_A1.txt")
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
-    result = runner.invoke(ascmhl.commands.create, ["/root/A"])
 
+    result = runner.invoke(ascmhl.commands.create, ["/root/A"])
     os.rename("/root/A/_A1.txt", "/root/A/__A1.txt")
     result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-dr"])
 

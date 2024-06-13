@@ -274,3 +274,32 @@ Child History at /root/A:
 Child History at /root/B:
   Generation 1 (2020-01-16T09:15:00+00:00)\n"""
     )
+
+
+@freeze_time("2020-01-16 09:15:00")
+def test_create_nested_error_34(fs):
+    fs.create_file("/root/Stuff.txt", contents="stuff\n")
+    fs.create_file("/root/A/A1.txt", contents="A1\n")
+    fs.create_file("/root/B/B1.txt", contents="B1\n")
+    fs.create_file("/root/A/A2.txt", contents="A2\n")
+
+    runner = CliRunner()
+    result = runner.invoke(ascmhl.commands.create, ["/root/A", "-h", "xxh64", "-v"])
+    assert not result.exception
+    result = runner.invoke(ascmhl.commands.create, ["/root/B", "-h", "xxh64", "-v"])
+    assert not result.exception
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v"])
+    assert not result.exception
+
+    # fs.create_file("/root/A/AA/AA2.txt", contents="AA2\n")
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v"])
+    assert not result.exception
+
+    os.rename("/root/A", "/root/_A")
+    os.rename("/root/B/B1.txt", "/root/B/_B1.txt")
+
+    result = runner.invoke(ascmhl.commands.diff, ["/root", "-l", "-v"])
+    assert result.exit_code == 34
+
+    result = runner.invoke(ascmhl.commands.create, ["/root", "-h", "xxh64", "-v", "-dr"])
+    assert not result.exception

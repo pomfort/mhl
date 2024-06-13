@@ -102,6 +102,7 @@ def test_verify_renamed_file_but_also_changed_file(fs):
     result = runner.invoke(ascmhl.commands.verify, ["/root"])
     assert result.exception
 
+
 @freeze_time("2020-01-16 09:15:00")
 def test_detect_renamed_file_but_also_changed_file(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
@@ -120,6 +121,7 @@ def test_detect_renamed_file_but_also_changed_file(fs):
 
     result = runner.invoke(ascmhl.commands.create, ["/root", "-dr", "-h", "xxh64", "-v"])
     assert result.exit_code == 10
+
 
 @freeze_time("2020-01-16 09:15:00")
 def test_detect_renamed_files(fs):
@@ -190,7 +192,7 @@ def test_detect_renamed_files_different_hash(fs):
 
 
 @freeze_time("2020-01-16 09:15:00")
-def test_detect_renamed_files_different_hash(fs):
+def test_detect_renamed_folders_different_hash(fs):
     fs.create_file("/root/Stuff.txt", contents="stuff\n")
     fs.create_file("/root/A/A1.txt", contents="A1\n")
     fs.create_file("/root/B/B1.txt", contents="B1\n")
@@ -205,7 +207,7 @@ def test_detect_renamed_files_different_hash(fs):
     result = runner.invoke(ascmhl.commands.verify, ["/root"])
     assert not result.exception
 
-    os.rename("/root/A/AA/AA1.txt", "/root/A/AA/AA1_renamed.txt")
+    os.rename("/root/A/AA", "/root/A/_AA")
     fs.create_file("/root/B/B2.txt", contents="B2\n")
 
     result = runner.invoke(ascmhl.commands.create, ["/root", "-v", "-dr"])
@@ -213,9 +215,9 @@ def test_detect_renamed_files_different_hash(fs):
 
     with open("/root/ascmhl/0003_root_2020-01-16_091500Z.mhl", "r") as fin:
         fileContents = fin.read()
-        assert fileContents.count("previousPath") == 2
-        assert "AA1.txt" in fileContents
-        assert "AA1_renamed.txt" in fileContents
+        assert fileContents.count("previousPath") == 4
+        assert "AA" in fileContents
+        assert "_AA" in fileContents
 
     result = runner.invoke(ascmhl.commands.verify, ["/root", "-h", "xxh64"])
     assert not result.exception
@@ -333,6 +335,7 @@ def test_rename_a_single_file(fs, simple_mhl_history):
     # the log output of the tool should state the rename and the new hash (as original??)
     assert "created original hash for     A/A1_renamed.txt  xxh64: 95e230e90be29dd6"
     assert "a renamed file was detected: from A/A1.txt to A/A1_renamed.txt" in result.output
+
 
 @freeze_time("2020-01-16 09:15:00")
 def test_renaming_swapping_two_files_in_one_step(fs, simple_mhl_history):

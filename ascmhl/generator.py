@@ -164,7 +164,12 @@ class MHLGenerationCreationSession:
         return hash_entry.action != "failed"
 
     def append_multiple_format_directory_hashes(
-        self, path, modification_date, content_hash_lookup: Dict[str, str], structure_hash_lookup: Dict[str, str]
+        self,
+        path,
+        modification_date,
+        content_hash_lookup: Dict[str, str],
+        structure_hash_lookup: Dict[str, str],
+        hash_formats_to_append: List[str] = None,
     ) -> None:
         """
         Adds directory hashes to the history
@@ -187,6 +192,9 @@ class MHLGenerationCreationSession:
         # Add the content entries
         if content_hash_lookup:
             for hash_format, content_hash_string in content_hash_lookup.items():
+                if hash_formats_to_append is not None and hash_format not in hash_formats_to_append:
+                    continue
+
                 # Find the structure hash string
                 structure_hash_string = structure_hash_lookup[hash_format]
 

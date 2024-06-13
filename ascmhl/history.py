@@ -186,6 +186,19 @@ class MHLHistory:
                     hash_formats.append(hash_entry.hash_format)
         return hash_formats
 
+    def find_existing_hash_formats(self) -> List[str]:
+        """Searches through the history to find all existing hash formats we might want to compare against"""
+        hash_formats = []
+        for hash_list in self.hash_lists:
+            media_hashes = hash_list.media_hashes
+            if media_hashes is None:
+                continue
+            for media_hash in media_hashes:
+                for hash_entry in media_hash.hash_entries:
+                    if hash_entry.hash_format not in hash_formats:
+                        hash_formats.append(hash_entry.hash_format)
+        return hash_formats
+
     # def handling of child histories
     def find_history_for_path(self, relative_path: str) -> Tuple[MHLHistory, str]:
         if len(self.child_histories) == 0:

@@ -249,13 +249,20 @@ def create_for_folder_subcommand(
     dir_structure_hash_mapping_lookup = {}
     hash_format_list = sorted(hash_formats)
 
+    # we need this extra list to generate old hash formats in order to detect renamed folders
+    hash_format_list_for_dir = list(hash_format_list)
+    all_dir_and_hash_lookup = {}
+    for hash_format in existing_history.find_existing_hash_formats():
+        if hash_format not in hash_format_list_for_dir:
+            hash_format_list_for_dir.append(hash_format)
+
     for folder_path, children in post_order_lexicographic(root_path, session.ignore_spec.get_path_spec()):
         # generate directory hashes
         dir_hash_context_lookup = {}
 
         if not no_directory_hashes:
             # Create a DirectoryHashContext for each hash format and store in the lookup
-            for hash_format in hash_format_list:
+            for hash_format in hash_format_list_for_dir:
                 dir_hash_context_lookup[hash_format] = DirectoryHashContext(hash_format)
         for item_name, is_dir in children:
             file_path = os.path.join(folder_path, item_name)
@@ -278,7 +285,9 @@ def create_for_folder_subcommand(
                             path_structure_hash_lookup[hash_format],
                         )
             else:
-                seal_result = seal_file_path(existing_history, file_path, hash_format_list, session)
+                seal_result = seal_file_path(
+                    existing_history, file_path, hash_format_list, session, hash_format_list_for_dir
+                )
 
                 for hash_format, result_tuple in seal_result.items():
                     dir_hash_context = None
@@ -301,6 +310,9 @@ def create_for_folder_subcommand(
             for hash_format, dir_hash_context in dir_hash_context_lookup.items():
                 dir_content_hash = dir_hash_context.final_content_hash_str()
                 dir_structure_hash = dir_hash_context.final_structure_hash_str()
+                all_dir_and_hash_lookup[folder_path] = {}
+                all_dir_and_hash_lookup[folder_path]["content"] = dir_content_hash_lookup
+                all_dir_and_hash_lookup[folder_path]["structure"] = dir_structure_hash_lookup
 
                 if dir_content_hash_mapping_lookup and folder_path in dir_content_hash_mapping_lookup.keys():
                     dir_content_hash_mapping_lookup[folder_path][hash_format] = dir_content_hash
@@ -318,7 +330,7 @@ def create_for_folder_subcommand(
         modification_date = datetime.datetime.fromtimestamp(os.path.getmtime(folder_path))
 
         session.append_multiple_format_directory_hashes(
-            folder_path, modification_date, dir_content_hash_lookup, dir_structure_hash_lookup
+            folder_path, modification_date, dir_content_hash_lookup, dir_structure_hash_lookup, hash_format_list
         )
 
     if len(existing_history.hash_lists) > 0:
@@ -350,6 +362,7 @@ def create_for_folder_subcommand(
                         break
                 new_path_hash = new_path_media_hash.find_hash_entry_for_format(not_found_path_hash.hash_format)
                 # compare found hashes
+                found_file = False
                 if new_path_hash:
                     if new_path_hash.hash_string == not_found_path_hash.hash_string:
                         if os.path.basename(new_path) != os.path.basename(not_found_path):
@@ -375,11 +388,22 @@ def create_for_folder_subcommand(
                                 missing_asc_mhl_folder.discard(not_found_path)
                                 missing_asc_mhl_folder.add(new_path)
                         found_file_paths.add(not_found_path)
-                else:
-                    old_hash_format_for_new_path = hasher.hash_file(
-                        os.path.join(root_path, new_path), not_found_path_hash.hash_format
-                    )
-                    if old_hash_format_for_new_path == not_found_path_hash.hash_string:
+                        found_file = True
+                if not found_file:
+                    hashes_are_equal = False
+                    if os.path.isdir(new_path):
+                        content_hash = all_dir_and_hash_lookup[new_path]["content"][not_found_path_hash.hash_format]
+                        structure_hash = all_dir_and_hash_lookup[new_path]["structure"][not_found_path_hash.hash_format]
+                        hashes_are_equal = (
+                            content_hash == not_found_path_hash.hash_string
+                            and structure_hash == not_found_path_hash.structure_hash_string
+                        )
+                    else:
+                        old_hash_format_for_new_path = hasher.hash_file(
+                            os.path.join(root_path, new_path), not_found_path_hash.hash_format
+                        )
+                        hashes_are_equal = old_hash_format_for_new_path == not_found_path_hash.hash_string
+                    if hashes_are_equal:
                         if os.path.basename(new_path) != os.path.basename(not_found_path):
                             logger.info(
                                 "a renamed {} was detected: from {} to {}".format(
@@ -1649,18 +1673,24 @@ success -- boolean value, indicates if the update was successful
 SealPathResult = namedtuple("SealPathResult", ["hash_value", "success"])
 
 
-def seal_file_path(existing_history, file_path, hash_formats: [str], session) -> Dict[str, SealPathResult]:
+def seal_file_path(
+    existing_history, file_path, hash_formats: [str], session, hash_formats_for_dir: [str] = None
+) -> Dict[str, SealPathResult]:
     """
     Generates hashes for a file path.
     Compares the generated hashes to any existing hash records
     Adds the generated hashes to the hash history of the file path
     :param existing_history: The existing hash record
     :param file_path: The path for which to generate hashes
-    :param hash_formats: The hash formats to generate
+    :param hash_formats: The hash formats to generate for a file
+    :param hash_formats_for_dir: The hash formats to generate to later generate dir hashes
     :param session: The session to which the generated hashes will be added
     :return: A dictionary keyed by hash_format strings.
     Each entry contains the hash value and a boolean indicating if updating was successful
     """
+    if hash_formats_for_dir is None:
+        hash_formats_for_dir = []
+
     relative_path = existing_history.get_relative_file_path(file_path)
     file_size = os.path.getsize(file_path)
     file_modification_date = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
@@ -1688,6 +1718,10 @@ def seal_file_path(existing_history, file_path, hash_formats: [str], session) ->
     for hash_format in hash_formats:
         if hash_format not in hash_formats_to_generate:
             hash_formats_to_generate.append(hash_format)
+    if not existing_hash_formats:
+        for hash_format in hash_formats_for_dir:
+            if hash_format not in hash_formats_to_generate:
+                hash_formats_to_generate.append(hash_format)
 
     # generate the file hashes
     current_hash_lookup = multiple_format_hash_file(file_path, hash_formats_to_generate)
@@ -1728,13 +1762,13 @@ def seal_file_path(existing_history, file_path, hash_formats: [str], session) ->
         success = existing_hashes_verified
 
         # only add the new hash format to the session if the previous hashes are verified
-        if success:
+        if success and hash_format in hash_formats:
             success &= session.append_file_hash(
                 file_path, file_size, file_modification_date, hash_format, current_hash_lookup[hash_format]
             )
 
         # If the existing hash was requested by the caller it needs to be added to the lookup
-        if hash_format in hash_formats:
+        if hash_format in hash_formats or hash_format in hash_formats_for_dir:
             hash_result_lookup[hash_format] = SealPathResult(current_hash_lookup[hash_format], success)
 
     return hash_result_lookup

@@ -1104,7 +1104,9 @@ def diff_entire_folder_against_full_history_subcommand(
             relative_path = existing_history.get_relative_file_path(file_path)
             history, history_relative_path = existing_history.find_history_for_path(relative_path)
             if only_info:
-                used_ignore_spec = ignore.MHLIgnoreSpec(history.latest_ignore_patterns(), ignore_list, ignore_spec_file)
+                used_ignore_spec = ignore.MHLIgnoreSpec(
+                    existing_history.latest_ignore_patterns(), ignore_list, ignore_spec_file
+                )
                 compact_info_for_single_file(existing_history.get_root_path(), file_path, used_ignore_spec)
             if is_dir:
                 # TODO: find new directories here
@@ -1526,7 +1528,7 @@ def compact_info_for_single_file(root_path, path, ignore_spec=None):
 
     file_size, bytes_string = utils.format_bytes(os.path.getsize(path))
 
-    if ignore_spec.get_path_spec().match_file(relative_path):
+    if ignore_spec.get_path_spec().match_file(path):
         logger.info(f"{path} | None | Ignored | {previous_paths_string} | {file_size:.2f} {bytes_string} | None")
         return
 
